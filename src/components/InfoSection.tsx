@@ -104,7 +104,7 @@ export function InfoSection() {
               <Label htmlFor="clientCompanyName">公司名稱</Label>
               <ConfigValueSelector
                 configKey="client.companyName"
-                configValue={config?.client?.companyName}
+                configValues={config?.client?.companyName}
                 currentValue={currentQuotation.client.companyName}
                 onSelect={(value) => updateClientInfo({ companyName: String(value) })}
               />
@@ -123,7 +123,7 @@ export function InfoSection() {
               <Label htmlFor="clientContactPerson">聯絡人</Label>
               <ConfigValueSelector
                 configKey="client.contactPerson"
-                configValue={config?.client?.contactPerson}
+                configValues={config?.client?.contactPerson}
                 currentValue={currentQuotation.client.contactPerson}
                 onSelect={(value) => updateClientInfo({ contactPerson: String(value) })}
               />
@@ -142,7 +142,7 @@ export function InfoSection() {
               <Label htmlFor="clientPhone">電話</Label>
               <ConfigValueSelector
                 configKey="client.phone"
-                configValue={config?.client?.phone}
+                configValues={config?.client?.phone}
                 currentValue={currentQuotation.client.phone}
                 onSelect={(value) => updateClientInfo({ phone: String(value) })}
               />
@@ -161,7 +161,7 @@ export function InfoSection() {
               <Label htmlFor="clientEmail">Email</Label>
               <ConfigValueSelector
                 configKey="client.email"
-                configValue={config?.client?.email}
+                configValues={config?.client?.email}
                 currentValue={currentQuotation.client.email}
                 onSelect={(value) => updateClientInfo({ email: String(value) })}
               />
@@ -181,7 +181,7 @@ export function InfoSection() {
               <Label htmlFor="clientAddress">地址</Label>
               <ConfigValueSelector
                 configKey="client.address"
-                configValue={config?.client?.address}
+                configValues={config?.client?.address}
                 currentValue={currentQuotation.client.address}
                 onSelect={(value) => updateClientInfo({ address: String(value) })}
               />
@@ -294,7 +294,7 @@ export function InfoSection() {
               <Label htmlFor="providerCompanyName">公司名稱</Label>
               <ConfigValueSelector
                 configKey="provider.companyName"
-                configValue={config?.provider?.companyName}
+                configValues={config?.provider?.companyName}
                 currentValue={currentQuotation.provider.companyName}
                 onSelect={(value) => updateProviderInfo({ companyName: String(value) })}
               />
@@ -313,7 +313,7 @@ export function InfoSection() {
               <Label htmlFor="providerBrandName">品牌名稱</Label>
               <ConfigValueSelector
                 configKey="provider.brandName"
-                configValue={config?.provider?.brandName}
+                configValues={config?.provider?.brandName}
                 currentValue={currentQuotation.provider.brandName || ''}
                 onSelect={(value) => updateProviderInfo({ brandName: String(value) })}
               />
@@ -332,7 +332,7 @@ export function InfoSection() {
               <Label htmlFor="providerContactPerson">聯絡人</Label>
               <ConfigValueSelector
                 configKey="provider.contactPerson"
-                configValue={config?.provider?.contactPerson}
+                configValues={config?.provider?.contactPerson}
                 currentValue={currentQuotation.provider.contactPerson}
                 onSelect={(value) => updateProviderInfo({ contactPerson: String(value) })}
               />
@@ -351,7 +351,7 @@ export function InfoSection() {
               <Label htmlFor="providerPhone">電話</Label>
               <ConfigValueSelector
                 configKey="provider.phone"
-                configValue={config?.provider?.phone}
+                configValues={config?.provider?.phone}
                 currentValue={currentQuotation.provider.phone}
                 onSelect={(value) => updateProviderInfo({ phone: String(value) })}
               />
@@ -370,7 +370,7 @@ export function InfoSection() {
               <Label htmlFor="providerEmail">Email</Label>
               <ConfigValueSelector
                 configKey="provider.email"
-                configValue={config?.provider?.email}
+                configValues={config?.provider?.email}
                 currentValue={currentQuotation.provider.email}
                 onSelect={(value) => updateProviderInfo({ email: String(value) })}
               />
@@ -390,7 +390,7 @@ export function InfoSection() {
               <Label htmlFor="providerAddress">地址</Label>
               <ConfigValueSelector
                 configKey="provider.address"
-                configValue={config?.provider?.address}
+                configValues={config?.provider?.address}
                 currentValue={currentQuotation.provider.address}
                 onSelect={(value) => updateProviderInfo({ address: String(value) })}
               />
@@ -409,7 +409,7 @@ export function InfoSection() {
               <Label htmlFor="providerTaxId">統一編號</Label>
               <ConfigValueSelector
                 configKey="provider.taxId"
-                configValue={config?.provider?.taxId}
+                configValues={config?.provider?.taxId}
                 currentValue={currentQuotation.provider.taxId || ''}
                 onSelect={(value) => updateProviderInfo({ taxId: String(value) })}
               />

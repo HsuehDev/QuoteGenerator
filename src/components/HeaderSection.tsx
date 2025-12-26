@@ -31,7 +31,7 @@ export function HeaderSection() {
             <Label htmlFor="title">報價單標題</Label>
             <ConfigValueSelector
               configKey="title"
-              configValue={config?.title}
+              configValues={config?.title}
               currentValue={currentQuotation.title}
               onSelect={(value) => updateQuotation({ title: String(value) })}
             />

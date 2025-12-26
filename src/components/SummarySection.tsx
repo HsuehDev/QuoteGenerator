@@ -58,7 +58,7 @@ export function SummarySection() {
                 <Label htmlFor="taxName">稅目名稱</Label>
                 <ConfigValueSelector
                   configKey="taxConfig.name"
-                  configValue={config?.taxConfig?.name}
+                  configValues={config?.taxConfig?.name}
                   currentValue={currentQuotation.taxConfig.name}
                   onSelect={(value) => updateTaxConfig({ name: String(value) })}
                 />
@@ -76,10 +76,10 @@ export function SummarySection() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="taxRate">稅率 (%)</Label>
-                {config?.taxConfig?.rate !== undefined && (
+                {config?.taxConfig?.rate && config.taxConfig.rate.length > 0 && (
                   <ConfigValueSelector
                     configKey="taxConfig.rate"
-                    configValue={config.taxConfig.rate}
+                    configValues={config.taxConfig.rate.map(r => String(r))}
                     currentValue={currentQuotation.taxConfig.rate}
                     onSelect={(value) => updateTaxConfig({ rate: Number(value) })}
                   />
@@ -102,10 +102,10 @@ export function SummarySection() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="taxMode">計算方式</Label>
-                {config?.taxConfig?.mode !== undefined && (
+                {config?.taxConfig?.mode && config.taxConfig.mode.length > 0 && (
                   <ConfigValueSelector
                     configKey="taxConfig.mode"
-                    configValue={config.taxConfig.mode}
+                    configValues={config.taxConfig.mode}
                     currentValue={currentQuotation.taxConfig.mode || 'excluded'}
                     onSelect={(value) => updateTaxConfig({ mode: value as TaxCalculationMode })}
                   />
@@ -228,7 +228,7 @@ export function SummarySection() {
             <CardTitle>備註</CardTitle>
             <ConfigValueSelector
               configKey="notes"
-              configValue={config?.notes}
+              configValues={config?.notes}
               currentValue={currentQuotation.notes}
               onSelect={(value) => updateNotes(String(value))}
             />
