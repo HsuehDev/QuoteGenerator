@@ -10,26 +10,13 @@
 
 - [✨ 功能特色](#-功能特色)
 - [📸 Demo / Screenshots](#-demo--screenshots)
-- [🚀 快速開始](#-快速開始)
-  - [環境需求](#環境需求)
-  - [安裝與啟動](#安裝與啟動)
+- [📖 使用指南](#-使用指南)
+- [❓ 常見問題](#-常見問題)
 - [🚢 部署指南](#-部署指南)
   - [📦 NPM 部署](#-npm-部署)
   - [🐳 Docker 部署](#-docker-部署)
-- [📖 使用指南](#-使用指南)
 - [🛠️ 技術棧](#️-技術棧)
-  - [前端框架](#前端框架)
-  - [狀態管理](#狀態管理)
-  - [UI 組件庫](#ui-組件庫)
-  - [樣式系統](#樣式系統)
-  - [功能庫](#功能庫)
-  - [開發工具](#開發工具)
-- [📁 專案結構](#-專案結構)
-  - [路徑別名](#路徑別名)
-- [📤 匯出功能說明](#-匯出功能說明)
-- [🤝 貢獻指南](#-貢獻指南)
 - [📄 License](#-license)
-- [❓ 常見問題](#-常見問題)
 - [📞 聯絡與回饋](#-聯絡與回饋)
 
 ---
@@ -50,48 +37,32 @@
 
 ---
 
-## 🚀 快速開始
+## 📖 使用指南
 
-### 環境需求
+1. **建立報價單**：填寫基本資訊、客戶資訊、服務提供方資訊
+2. **新增報價項目**：填寫品項名稱、描述、數量、單價（系統自動計算小計）
+3. **拖拽排序**：按住項目左側拖拽圖示調整順序
+4. **匯出報價單**：點擊頂部匯出按鈕（JPG / PDF / Excel）
+5. **管理歷史記錄**：點擊右上角歷史記錄圖示查看、載入或刪除
 
-- Node.js 18+ 
-- pnpm / npm / yarn
+---
 
-### 安裝與啟動
+## ❓ 常見問題
 
-使用 **pnpm**（推薦）：
+**Q: 匯出的 PDF 排版與畫面顯示不一致？**  
+A: html2canvas 可能無法完美還原某些 CSS 樣式（如 `backdrop-filter`），建議調整 `scale` 參數或確認內容已完全載入。
 
-```bash
-# 安裝依賴
-pnpm install
+**Q: 拖拽功能在行動裝置上無法使用？**  
+A: `@dnd-kit` 預設支援觸控操作，請確認瀏覽器版本是否過舊。
 
-# 啟動開發伺服器
-pnpm dev
+**Q: 清除瀏覽器資料後，報價單歷史記錄消失了？**  
+A: 本專案使用 localStorage 儲存資料，清除瀏覽器資料會導致資料遺失。建議定期匯出重要報價單作為備份。
 
-# 建置生產版本
-pnpm build
+**Q: 如何自訂報價單樣式？**  
+A: 修改 `src/components/QuotationDisplay.tsx` 中的 Tailwind CSS 類別，或調整 `tailwind.config.js` 主題設定。
 
-# 預覽生產版本
-pnpm preview
-```
-
-使用 **npm**：
-
-```bash
-# 安裝依賴
-npm install
-
-# 啟動開發伺服器
-npm run dev
-
-# 建置生產版本
-npm run build
-
-# 預覽生產版本
-npm run preview
-```
-
-開發伺服器預設會在 `http://localhost:5173` 啟動。
+**Q: 可以匯入現有的報價單嗎？**  
+A: 目前僅支援從歷史記錄載入，Excel 匯入功能需要額外實作。
 
 ---
 
@@ -101,10 +72,10 @@ npm run preview
 
 ```bash
 # 建置生產版本
-pnpm build  # 或 npm run build
+npm run build
 
 # 預覽生產版本
-pnpm preview  # 或 npm run preview
+npm run preview
 ```
 
 建置完成後，將 `dist/` 目錄部署到 Vercel、Netlify、GitHub Pages 等靜態網站託管服務。
@@ -123,16 +94,6 @@ docker run -d --name quote-generator -p 3000:80 quote-generator:latest
 ```
 
 應用程式將在 `http://localhost:3000` 啟動。
-
----
-
-## 📖 使用指南
-
-1. 建立報價單：填寫基本資訊、客戶資訊、服務提供方資訊
-2. 新增報價項目：填寫品項名稱、描述、數量、單價（系統自動計算小計）
-3. 拖拽排序：按住項目左側拖拽圖示調整順序
-4. 匯出報價單：點擊頂部匯出按鈕（JPG / PDF / Excel）
-5. 管理歷史記錄：點擊右上角歷史記錄圖示查看、載入或刪除
 
 ---
 
@@ -201,99 +162,9 @@ docker run -d --name quote-generator -p 3000:80 quote-generator:latest
 
 ---
 
-## 📁 專案結構
-
-```
-quote-generator/
-├── public/                 # 靜態資源
-├── src/
-│   ├── assets/            # 圖片、字體等資源
-│   ├── components/         # React 組件
-│   │   ├── ui/            # shadcn/ui 基礎組件
-│   │   ├── ExportButtons.tsx
-│   │   ├── HeaderSection.tsx
-│   │   ├── HistoryDrawer.tsx
-│   │   ├── InfoSection.tsx
-│   │   ├── ItemsTable.tsx
-│   │   ├── QuotationDisplay.tsx
-│   │   └── SummarySection.tsx
-│   ├── lib/               # 工具函數庫
-│   │   └── utils.ts       # 通用工具函數
-│   ├── stores/            # 狀態管理
-│   │   └── quotationStore.ts  # Zustand store
-│   ├── types/             # TypeScript 類型定義
-│   │   └── quotation.ts
-│   ├── utils/             # 業務邏輯工具
-│   │   ├── calculations.ts    # 計算相關
-│   │   ├── exportHandler.ts   # 匯出處理
-│   │   └── imageUtils.ts      # 圖片處理
-│   ├── App.tsx            # 主應用組件
-│   ├── App.css            # 應用樣式
-│   ├── index.css          # 全域樣式
-│   └── main.tsx           # 應用入口
-├── dist/                  # 建置輸出目錄
-├── index.html             # HTML 模板
-├── package.json           # 專案配置與依賴
-├── tsconfig.json          # TypeScript 配置
-├── vite.config.ts         # Vite 配置
-├── tailwind.config.js     # Tailwind CSS 配置
-└── README.md              # 專案說明文件
-```
-
-### 路徑別名
-
-專案使用 `@/` 作為 `src/` 目錄的別名，例如：
-
-```typescript
-import { useQuotationStore } from '@/stores/quotationStore';
-import { Button } from '@/components/ui/button';
-```
-
----
-
-## 📤 匯出功能說明
-
-- **Excel 匯出**：生成 `.xlsx` 檔案，相容 Excel 2007+ 格式
-- **PDF 匯出**：使用 jsPDF + html2canvas 生成 PDF 文件
-- **圖片匯出**：使用 html2canvas 轉換為 JPG 圖片
-
-**瀏覽器相容性**：Chrome 90+、Firefox 88+、Safari 14+、Edge 90+（不支援 IE 11）
-
----
-
-## 🤝 貢獻指南
-
-1. Fork 專案
-2. 建立分支：`git checkout -b feature/your-feature-name`
-3. 提交變更：`git commit -m "feat: 新增某項功能"`
-4. 推送並建立 Pull Request
-
-**Commit Message 慣例**：使用 [Conventional Commits](https://www.conventionalcommits.org/) 風格（`feat:`、`fix:`、`docs:` 等）
-
----
-
 ## 📄 License
 
-本專案採用 MIT License。若您需要使用不同的授權方式，請自行更換 LICENSE 檔案。
-
----
-
-## ❓ 常見問題
-
-**Q: 匯出的 PDF 排版與畫面顯示不一致？**  
-A: html2canvas 可能無法完美還原某些 CSS 樣式（如 `backdrop-filter`），建議調整 `scale` 參數或確認內容已完全載入。
-
-**Q: 拖拽功能在行動裝置上無法使用？**  
-A: `@dnd-kit` 預設支援觸控操作，請確認瀏覽器版本是否過舊。
-
-**Q: 清除瀏覽器資料後，報價單歷史記錄消失了？**  
-A: 本專案使用 localStorage 儲存資料，清除瀏覽器資料會導致資料遺失。建議定期匯出重要報價單作為備份。
-
-**Q: 如何自訂報價單樣式？**  
-A: 修改 `src/components/QuotationDisplay.tsx` 中的 Tailwind CSS 類別，或調整 `tailwind.config.js` 主題設定。
-
-**Q: 可以匯入現有的報價單嗎？**  
-A: 目前僅支援從歷史記錄載入，Excel 匯入功能需要額外實作。
+本專案採用 MIT License。
 
 ---
 
