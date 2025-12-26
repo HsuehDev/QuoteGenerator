@@ -46,40 +46,40 @@ const createDefaultQuotation = (): Quotation => {
   const now = new Date().toISOString();
   const config = loadConfig();
   
-  // 從設定檔載入預設值，如果設定檔有值則使用，否則使用系統預設值
+  // 從設定檔載入預設值，如果設定檔有值則使用第一個選項，否則使用系統預設值
   return {
     id: `quotation-${Date.now()}`,
-    title: config?.title || '專案報價單',
-    subtitle: config?.subtitle || 'QUOTATION',
+    title: (config?.title && config.title.length > 0) ? config.title[0] : '專案報價單',
+    subtitle: (config?.subtitle && config.subtitle.length > 0) ? config.subtitle[0] : 'QUOTATION',
     quotationNumber: '',
     quotationDate: format(new Date(), 'yyyy-MM-dd'),
     validUntil: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
     client: {
-      companyName: config?.client?.companyName || '',
-      contactPerson: config?.client?.contactPerson || '',
-      phone: config?.client?.phone || '',
-      email: config?.client?.email || '',
-      address: config?.client?.address || '',
+      companyName: (config?.client?.companyName && config.client.companyName.length > 0) ? config.client.companyName[0] : '',
+      contactPerson: (config?.client?.contactPerson && config.client.contactPerson.length > 0) ? config.client.contactPerson[0] : '',
+      phone: (config?.client?.phone && config.client.phone.length > 0) ? config.client.phone[0] : '',
+      email: (config?.client?.email && config.client.email.length > 0) ? config.client.email[0] : '',
+      address: (config?.client?.address && config.client.address.length > 0) ? config.client.address[0] : '',
       logo: config?.client?.logo,
     },
     provider: {
-      companyName: config?.provider?.companyName || '',
-      brandName: config?.provider?.brandName || '',
-      contactPerson: config?.provider?.contactPerson || '',
-      phone: config?.provider?.phone || '',
-      email: config?.provider?.email || '',
-      address: config?.provider?.address || '',
-      taxId: config?.provider?.taxId || '',
+      companyName: (config?.provider?.companyName && config.provider.companyName.length > 0) ? config.provider.companyName[0] : '',
+      brandName: (config?.provider?.brandName && config.provider.brandName.length > 0) ? config.provider.brandName[0] : '',
+      contactPerson: (config?.provider?.contactPerson && config.provider.contactPerson.length > 0) ? config.provider.contactPerson[0] : '',
+      phone: (config?.provider?.phone && config.provider.phone.length > 0) ? config.provider.phone[0] : '',
+      email: (config?.provider?.email && config.provider.email.length > 0) ? config.provider.email[0] : '',
+      address: (config?.provider?.address && config.provider.address.length > 0) ? config.provider.address[0] : '',
+      taxId: (config?.provider?.taxId && config.provider.taxId.length > 0) ? config.provider.taxId[0] : '',
       logo: config?.provider?.logo,
       stamp: config?.provider?.stamp,
     },
     items: [],
     taxConfig: {
-      name: config?.taxConfig?.name || '營業稅',
-      rate: config?.taxConfig?.rate ?? 5,
-      mode: config?.taxConfig?.mode || 'excluded', // 預設為外加
+      name: (config?.taxConfig?.name && config.taxConfig.name.length > 0) ? config.taxConfig.name[0] : '營業稅',
+      rate: (config?.taxConfig?.rate && config.taxConfig.rate.length > 0) ? config.taxConfig.rate[0] : 5,
+      mode: (config?.taxConfig?.mode && config.taxConfig.mode.length > 0) ? (config.taxConfig.mode[0] as TaxCalculationMode) : 'excluded', // 預設為外加
     },
-    notes: config?.notes || '',
+    notes: (config?.notes && config.notes.length > 0) ? config.notes[0] : '',
     showSignatureSection: config?.showSignatureSection !== undefined ? config.showSignatureSection : true, // 預設顯示簽章區
     createdAt: now,
     updatedAt: now,
