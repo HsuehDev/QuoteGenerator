@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  quote-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quote-generator
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - quote-generator-network
+
+networks:
+  quote-generator-network:
+    driver: bridge
+
