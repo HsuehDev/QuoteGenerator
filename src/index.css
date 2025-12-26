@@ -28,9 +28,18 @@
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+  
+  html.dark {
+    color-scheme: light !important;
+  }
+  
   body {
     @apply bg-gray-50 text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
+    color-scheme: light;
   }
 }
 
