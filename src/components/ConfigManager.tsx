@@ -2,9 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '@/stores/configStore';
 import { useQuotationStore } from '@/stores/quotationStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -23,12 +21,13 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Settings, Download, Upload, Trash2, Check } from 'lucide-react';
+import { Settings, Download, Upload, Trash2, Check, Plus, X } from 'lucide-react';
 import { exportConfig, importConfig } from '@/utils/configManager';
 import type { TaxCalculationMode } from '@/types/quotation';
+import { MultiOptionField } from '@/components/MultiOptionField';
 
 export function ConfigManager() {
-  const { config, loadConfig, updateConfig, saveConfig, deleteConfig } = useConfigStore();
+  const { config, loadConfig, updateConfig, deleteConfig } = useConfigStore();
   const { currentQuotation, updateQuotation, updateClientInfo, updateProviderInfo, updateTaxConfig, updateNotes } = useQuotationStore();
   const [isOpen, setIsOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState(config || {});
@@ -38,11 +37,14 @@ export function ConfigManager() {
     loadConfig();
   }, [loadConfig]);
 
-  useEffect(() => {
-    if (config) {
-      setLocalConfig(config);
+  // 當 drawer 打開時，初始化 localConfig
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      // 當 drawer 打開時，從 config 初始化 localConfig
+      setLocalConfig(config || {});
     }
-  }, [config]);
+  };
 
   const handleSave = () => {
     updateConfig(localConfig);
@@ -74,23 +76,80 @@ export function ConfigManager() {
   const applyConfigToQuotation = () => {
     if (!currentQuotation || !config) return;
 
-    if (config.title !== undefined) {
-      updateQuotation({ title: config.title });
+    if (config.title && config.title.length > 0) {
+      updateQuotation({ title: config.title[0] });
     }
-    if (config.subtitle !== undefined) {
-      updateQuotation({ subtitle: config.subtitle });
+    if (config.subtitle && config.subtitle.length > 0) {
+      updateQuotation({ subtitle: config.subtitle[0] });
     }
     if (config.client) {
-      updateClientInfo(config.client);
+      const clientInfo: Partial<import('@/types/quotation').ClientInfo> = {};
+      if (config.client.companyName && config.client.companyName.length > 0) {
+        clientInfo.companyName = config.client.companyName[0];
+      }
+      if (config.client.contactPerson && config.client.contactPerson.length > 0) {
+        clientInfo.contactPerson = config.client.contactPerson[0];
+      }
+      if (config.client.phone && config.client.phone.length > 0) {
+        clientInfo.phone = config.client.phone[0];
+      }
+      if (config.client.email && config.client.email.length > 0) {
+        clientInfo.email = config.client.email[0];
+      }
+      if (config.client.address && config.client.address.length > 0) {
+        clientInfo.address = config.client.address[0];
+      }
+      if (config.client.logo) {
+        clientInfo.logo = config.client.logo;
+      }
+      updateClientInfo(clientInfo);
     }
     if (config.provider) {
-      updateProviderInfo(config.provider);
+      const providerInfo: Partial<import('@/types/quotation').ProviderInfo> = {};
+      if (config.provider.companyName && config.provider.companyName.length > 0) {
+        providerInfo.companyName = config.provider.companyName[0];
+      }
+      if (config.provider.brandName && config.provider.brandName.length > 0) {
+        providerInfo.brandName = config.provider.brandName[0];
+      }
+      if (config.provider.contactPerson && config.provider.contactPerson.length > 0) {
+        providerInfo.contactPerson = config.provider.contactPerson[0];
+      }
+      if (config.provider.phone && config.provider.phone.length > 0) {
+        providerInfo.phone = config.provider.phone[0];
+      }
+      if (config.provider.email && config.provider.email.length > 0) {
+        providerInfo.email = config.provider.email[0];
+      }
+      if (config.provider.address && config.provider.address.length > 0) {
+        providerInfo.address = config.provider.address[0];
+      }
+      if (config.provider.taxId && config.provider.taxId.length > 0) {
+        providerInfo.taxId = config.provider.taxId[0];
+      }
+      if (config.provider.logo) {
+        providerInfo.logo = config.provider.logo;
+      }
+      if (config.provider.stamp) {
+        providerInfo.stamp = config.provider.stamp;
+      }
+      updateProviderInfo(providerInfo);
     }
     if (config.taxConfig) {
-      updateTaxConfig(config.taxConfig);
+      const taxInfo: Partial<import('@/types/quotation').TaxConfig> = {};
+      if (config.taxConfig.name && config.taxConfig.name.length > 0) {
+        taxInfo.name = config.taxConfig.name[0];
+      }
+      if (config.taxConfig.rate && config.taxConfig.rate.length > 0) {
+        taxInfo.rate = config.taxConfig.rate[0];
+      }
+      if (config.taxConfig.mode && config.taxConfig.mode.length > 0) {
+        taxInfo.mode = config.taxConfig.mode[0] as TaxCalculationMode;
+      }
+      updateTaxConfig(taxInfo);
     }
-    if (config.notes !== undefined) {
-      updateNotes(config.notes);
+    if (config.notes && config.notes.length > 0) {
+      updateNotes(config.notes[0]);
     }
     if (config.showSignatureSection !== undefined) {
       updateQuotation({ showSignatureSection: config.showSignatureSection });
@@ -101,7 +160,7 @@ export function ConfigManager() {
 
   return (
     <>
-      <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
         <DrawerTrigger asChild>
           <Button variant="outline" size="sm">
             <Settings className="h-4 w-4 mr-2" />
@@ -123,24 +182,18 @@ export function ConfigManager() {
                   <CardTitle>基本資訊</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="config-title">報價單標題</Label>
-                    <Input
-                      id="config-title"
-                      value={localConfig.title || ''}
-                      onChange={(e) => setLocalConfig({ ...localConfig, title: e.target.value })}
-                      placeholder="專案報價單"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-subtitle">副標題</Label>
-                    <Input
-                      id="config-subtitle"
-                      value={localConfig.subtitle || ''}
-                      onChange={(e) => setLocalConfig({ ...localConfig, subtitle: e.target.value })}
-                      placeholder="QUOTATION"
-                    />
-                  </div>
+                  <MultiOptionField
+                    label="報價單標題"
+                    values={localConfig.title || []}
+                    onChange={(values) => setLocalConfig({ ...localConfig, title: values })}
+                    placeholder="專案報價單"
+                  />
+                  <MultiOptionField
+                    label="副標題"
+                    values={localConfig.subtitle || []}
+                    onChange={(values) => setLocalConfig({ ...localConfig, subtitle: values })}
+                    placeholder="QUOTATION"
+                  />
                 </CardContent>
               </Card>
 
@@ -150,67 +203,51 @@ export function ConfigManager() {
                   <CardTitle>客戶資訊</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="config-client-company">公司名稱</Label>
-                    <Input
-                      id="config-client-company"
-                      value={localConfig.client?.companyName || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        client: { ...localConfig.client, companyName: e.target.value }
-                      })}
-                      placeholder="客戶公司名稱"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-client-contact">聯絡人</Label>
-                    <Input
-                      id="config-client-contact"
-                      value={localConfig.client?.contactPerson || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        client: { ...localConfig.client, contactPerson: e.target.value }
-                      })}
-                      placeholder="聯絡人姓名"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-client-phone">電話</Label>
-                    <Input
-                      id="config-client-phone"
-                      value={localConfig.client?.phone || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        client: { ...localConfig.client, phone: e.target.value }
-                      })}
-                      placeholder="02-1234-5678"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-client-email">Email</Label>
-                    <Input
-                      id="config-client-email"
-                      type="email"
-                      value={localConfig.client?.email || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        client: { ...localConfig.client, email: e.target.value }
-                      })}
-                      placeholder="example@company.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-client-address">地址</Label>
-                    <Input
-                      id="config-client-address"
-                      value={localConfig.client?.address || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        client: { ...localConfig.client, address: e.target.value }
-                      })}
-                      placeholder="公司地址"
-                    />
-                  </div>
+                  <MultiOptionField
+                    label="公司名稱"
+                    values={localConfig.client?.companyName || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, companyName: values }
+                    })}
+                    placeholder="客戶公司名稱"
+                  />
+                  <MultiOptionField
+                    label="聯絡人"
+                    values={localConfig.client?.contactPerson || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, contactPerson: values }
+                    })}
+                    placeholder="聯絡人姓名"
+                  />
+                  <MultiOptionField
+                    label="電話"
+                    values={localConfig.client?.phone || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, phone: values }
+                    })}
+                    placeholder="02-1234-5678"
+                  />
+                  <MultiOptionField
+                    label="Email"
+                    values={localConfig.client?.email || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, email: values }
+                    })}
+                    placeholder="example@company.com"
+                  />
+                  <MultiOptionField
+                    label="地址"
+                    values={localConfig.client?.address || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, address: values }
+                    })}
+                    placeholder="公司地址"
+                  />
                 </CardContent>
               </Card>
 
@@ -220,91 +257,69 @@ export function ConfigManager() {
                   <CardTitle>服務提供方</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-company">公司名稱</Label>
-                    <Input
-                      id="config-provider-company"
-                      value={localConfig.provider?.companyName || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, companyName: e.target.value }
-                      })}
-                      placeholder="服務提供方公司名稱"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-brand">品牌名稱</Label>
-                    <Input
-                      id="config-provider-brand"
-                      value={localConfig.provider?.brandName || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, brandName: e.target.value }
-                      })}
-                      placeholder="品牌名稱"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-contact">聯絡人</Label>
-                    <Input
-                      id="config-provider-contact"
-                      value={localConfig.provider?.contactPerson || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, contactPerson: e.target.value }
-                      })}
-                      placeholder="聯絡人姓名"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-phone">電話</Label>
-                    <Input
-                      id="config-provider-phone"
-                      value={localConfig.provider?.phone || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, phone: e.target.value }
-                      })}
-                      placeholder="02-1234-5678"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-email">Email</Label>
-                    <Input
-                      id="config-provider-email"
-                      type="email"
-                      value={localConfig.provider?.email || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, email: e.target.value }
-                      })}
-                      placeholder="example@company.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-address">地址</Label>
-                    <Input
-                      id="config-provider-address"
-                      value={localConfig.provider?.address || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, address: e.target.value }
-                      })}
-                      placeholder="公司地址"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-provider-taxId">統一編號</Label>
-                    <Input
-                      id="config-provider-taxId"
-                      value={localConfig.provider?.taxId || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        provider: { ...localConfig.provider, taxId: e.target.value }
-                      })}
-                      placeholder="統一編號"
-                    />
-                  </div>
+                  <MultiOptionField
+                    label="公司名稱"
+                    values={localConfig.provider?.companyName || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, companyName: values }
+                    })}
+                    placeholder="服務提供方公司名稱"
+                  />
+                  <MultiOptionField
+                    label="品牌名稱"
+                    values={localConfig.provider?.brandName || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, brandName: values }
+                    })}
+                    placeholder="品牌名稱"
+                  />
+                  <MultiOptionField
+                    label="聯絡人"
+                    values={localConfig.provider?.contactPerson || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, contactPerson: values }
+                    })}
+                    placeholder="聯絡人姓名"
+                  />
+                  <MultiOptionField
+                    label="電話"
+                    values={localConfig.provider?.phone || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, phone: values }
+                    })}
+                    placeholder="02-1234-5678"
+                  />
+                  <MultiOptionField
+                    label="Email"
+                    values={localConfig.provider?.email || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, email: values }
+                    })}
+                    placeholder="example@company.com"
+                  />
+                  <MultiOptionField
+                    label="地址"
+                    values={localConfig.provider?.address || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, address: values }
+                    })}
+                    placeholder="公司地址"
+                  />
+                  <MultiOptionField
+                    label="統一編號"
+                    values={localConfig.provider?.taxId || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      provider: { ...localConfig.provider, taxId: values }
+                    })}
+                    placeholder="統一編號"
+                  />
                 </CardContent>
               </Card>
 
@@ -314,51 +329,90 @@ export function ConfigManager() {
                   <CardTitle>稅率設定</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="config-tax-name">稅目名稱</Label>
-                    <Input
-                      id="config-tax-name"
-                      value={localConfig.taxConfig?.name || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        taxConfig: { ...localConfig.taxConfig, name: e.target.value }
-                      })}
-                      placeholder="營業稅"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="config-tax-rate">稅率 (%)</Label>
-                    <Input
-                      id="config-tax-rate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={localConfig.taxConfig?.rate || ''}
-                      onChange={(e) => setLocalConfig({
-                        ...localConfig,
-                        taxConfig: { ...localConfig.taxConfig, rate: parseFloat(e.target.value) || 0 }
-                      })}
-                    />
-                  </div>
+                  <MultiOptionField
+                    label="稅目名稱"
+                    values={localConfig.taxConfig?.name || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      taxConfig: { ...localConfig.taxConfig, name: values }
+                    })}
+                    placeholder="營業稅"
+                  />
+                  <MultiOptionField
+                    label="稅率 (%)"
+                    values={localConfig.taxConfig?.rate?.map(r => String(r)) || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      taxConfig: { 
+                        ...localConfig.taxConfig, 
+                        rate: values.map(v => parseFloat(v) || 0).filter(v => !isNaN(v))
+                      }
+                    })}
+                    placeholder="5"
+                    type="number"
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="config-tax-mode">計算方式</Label>
-                    <Select
-                      value={localConfig.taxConfig?.mode || 'excluded'}
-                      onValueChange={(value) => setLocalConfig({
-                        ...localConfig,
-                        taxConfig: { ...localConfig.taxConfig, mode: value as TaxCalculationMode }
-                      })}
-                    >
-                      <SelectTrigger id="config-tax-mode">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">未稅（0%）</SelectItem>
-                        <SelectItem value="included">含稅（內含）</SelectItem>
-                        <SelectItem value="excluded">外加稅（加在未稅上）</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      {(!localConfig.taxConfig?.mode || localConfig.taxConfig.mode.length === 0) && (
+                        <div className="text-sm text-gray-500 italic">尚無選項，點擊「新增」按鈕添加</div>
+                      )}
+                      {(localConfig.taxConfig?.mode || []).map((mode, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Select
+                            value={mode}
+                            onValueChange={(value) => {
+                              const newModes = [...(localConfig.taxConfig?.mode || [])];
+                              newModes[index] = value;
+                              setLocalConfig({
+                                ...localConfig,
+                                taxConfig: { ...localConfig.taxConfig, mode: newModes }
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">未稅（0%）</SelectItem>
+                              <SelectItem value="included">含稅（內含）</SelectItem>
+                              <SelectItem value="excluded">外加稅（加在未稅上）</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const newModes = (localConfig.taxConfig?.mode || []).filter((_, i) => i !== index);
+                              setLocalConfig({
+                                ...localConfig,
+                                taxConfig: { ...localConfig.taxConfig, mode: newModes }
+                              });
+                            }}
+                            className="h-8 w-8 text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newModes = [...(localConfig.taxConfig?.mode || []), 'excluded'];
+                          setLocalConfig({
+                            ...localConfig,
+                            taxConfig: { ...localConfig.taxConfig, mode: newModes }
+                          });
+                        }}
+                        className="h-7 text-xs"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        新增
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -369,16 +423,12 @@ export function ConfigManager() {
                   <CardTitle>其他設定</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="config-notes">備註</Label>
-                    <Textarea
-                      id="config-notes"
-                      value={localConfig.notes || ''}
-                      onChange={(e) => setLocalConfig({ ...localConfig, notes: e.target.value })}
-                      placeholder="請填寫匯款資訊、條款或其他備註..."
-                      className="min-h-[100px]"
-                    />
-                  </div>
+                  <MultiOptionField
+                    label="備註"
+                    values={localConfig.notes || []}
+                    onChange={(values) => setLocalConfig({ ...localConfig, notes: values })}
+                    placeholder="請填寫匯款資訊、條款或其他備註..."
+                  />
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
