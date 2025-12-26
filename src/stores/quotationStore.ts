@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Quotation, LineItem, ClientInfo, ProviderInfo, TaxConfig } from '@/types/quotation';
 import { format } from 'date-fns';
+import { loadConfig } from '@/utils/configManager';
 
 interface QuotationStore {
   currentQuotation: Quotation | null;
@@ -43,37 +44,43 @@ interface QuotationStore {
 
 const createDefaultQuotation = (): Quotation => {
   const now = new Date().toISOString();
+  const config = loadConfig();
+  
+  // 從設定檔載入預設值，如果設定檔有值則使用，否則使用系統預設值
   return {
     id: `quotation-${Date.now()}`,
-    title: '專案報價單',
-    subtitle: 'QUOTATION',
+    title: config?.title || '專案報價單',
+    subtitle: config?.subtitle || 'QUOTATION',
     quotationNumber: '',
     quotationDate: format(new Date(), 'yyyy-MM-dd'),
     validUntil: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
     client: {
-      companyName: '',
-      contactPerson: '',
-      phone: '',
-      email: '',
-      address: '',
+      companyName: config?.client?.companyName || '',
+      contactPerson: config?.client?.contactPerson || '',
+      phone: config?.client?.phone || '',
+      email: config?.client?.email || '',
+      address: config?.client?.address || '',
+      logo: config?.client?.logo,
     },
     provider: {
-      companyName: '',
-      brandName: '',
-      contactPerson: '',
-      phone: '',
-      email: '',
-      address: '',
-      taxId: '',
+      companyName: config?.provider?.companyName || '',
+      brandName: config?.provider?.brandName || '',
+      contactPerson: config?.provider?.contactPerson || '',
+      phone: config?.provider?.phone || '',
+      email: config?.provider?.email || '',
+      address: config?.provider?.address || '',
+      taxId: config?.provider?.taxId || '',
+      logo: config?.provider?.logo,
+      stamp: config?.provider?.stamp,
     },
     items: [],
     taxConfig: {
-      name: '營業稅',
-      rate: 5,
-      mode: 'excluded', // 預設為外加
+      name: config?.taxConfig?.name || '營業稅',
+      rate: config?.taxConfig?.rate ?? 5,
+      mode: config?.taxConfig?.mode || 'excluded', // 預設為外加
     },
-    notes: '',
-    showSignatureSection: true, // 預設顯示簽章區
+    notes: config?.notes || '',
+    showSignatureSection: config?.showSignatureSection !== undefined ? config.showSignatureSection : true, // 預設顯示簽章區
     createdAt: now,
     updatedAt: now,
   };

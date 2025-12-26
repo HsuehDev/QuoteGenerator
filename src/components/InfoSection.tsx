@@ -1,13 +1,16 @@
 import { useQuotationStore } from '@/stores/quotationStore';
+import { useConfigStore } from '@/stores/configStore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { convertImageToBase64 } from '@/utils/imageUtils';
 import { Upload, X } from 'lucide-react';
 import { useRef } from 'react';
+import { ConfigValueSelector } from '@/components/ConfigValueSelector';
 
 export function InfoSection() {
   const { currentQuotation, updateClientInfo, updateProviderInfo } = useQuotationStore();
+  const { config } = useConfigStore();
   const clientLogoInputRef = useRef<HTMLInputElement>(null);
   const providerLogoInputRef = useRef<HTMLInputElement>(null);
   const providerStampInputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +100,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientCompanyName">公司名稱</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clientCompanyName">公司名稱</Label>
+              <ConfigValueSelector
+                configKey="client.companyName"
+                configValue={config?.client?.companyName}
+                currentValue={currentQuotation.client.companyName}
+                onSelect={(value) => updateClientInfo({ companyName: String(value) })}
+              />
+            </div>
             <Input
               id="clientCompanyName"
               value={currentQuotation.client.companyName}
@@ -108,7 +119,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientContactPerson">聯絡人</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clientContactPerson">聯絡人</Label>
+              <ConfigValueSelector
+                configKey="client.contactPerson"
+                configValue={config?.client?.contactPerson}
+                currentValue={currentQuotation.client.contactPerson}
+                onSelect={(value) => updateClientInfo({ contactPerson: String(value) })}
+              />
+            </div>
             <Input
               id="clientContactPerson"
               value={currentQuotation.client.contactPerson}
@@ -119,7 +138,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientPhone">電話</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clientPhone">電話</Label>
+              <ConfigValueSelector
+                configKey="client.phone"
+                configValue={config?.client?.phone}
+                currentValue={currentQuotation.client.phone}
+                onSelect={(value) => updateClientInfo({ phone: String(value) })}
+              />
+            </div>
             <Input
               id="clientPhone"
               value={currentQuotation.client.phone}
@@ -130,7 +157,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientEmail">Email</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clientEmail">Email</Label>
+              <ConfigValueSelector
+                configKey="client.email"
+                configValue={config?.client?.email}
+                currentValue={currentQuotation.client.email}
+                onSelect={(value) => updateClientInfo({ email: String(value) })}
+              />
+            </div>
             <Input
               id="clientEmail"
               type="email"
@@ -142,7 +177,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientAddress">地址</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="clientAddress">地址</Label>
+              <ConfigValueSelector
+                configKey="client.address"
+                configValue={config?.client?.address}
+                currentValue={currentQuotation.client.address}
+                onSelect={(value) => updateClientInfo({ address: String(value) })}
+              />
+            </div>
             <Input
               id="clientAddress"
               value={currentQuotation.client.address}
@@ -247,7 +290,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerCompanyName">公司名稱</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerCompanyName">公司名稱</Label>
+              <ConfigValueSelector
+                configKey="provider.companyName"
+                configValue={config?.provider?.companyName}
+                currentValue={currentQuotation.provider.companyName}
+                onSelect={(value) => updateProviderInfo({ companyName: String(value) })}
+              />
+            </div>
             <Input
               id="providerCompanyName"
               value={currentQuotation.provider.companyName}
@@ -258,7 +309,34 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerContactPerson">聯絡人</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerBrandName">品牌名稱</Label>
+              <ConfigValueSelector
+                configKey="provider.brandName"
+                configValue={config?.provider?.brandName}
+                currentValue={currentQuotation.provider.brandName || ''}
+                onSelect={(value) => updateProviderInfo({ brandName: String(value) })}
+              />
+            </div>
+            <Input
+              id="providerBrandName"
+              value={currentQuotation.provider.brandName || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateProviderInfo({ brandName: e.target.value })}
+              placeholder="品牌名稱"
+              className="export-hide-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerContactPerson">聯絡人</Label>
+              <ConfigValueSelector
+                configKey="provider.contactPerson"
+                configValue={config?.provider?.contactPerson}
+                currentValue={currentQuotation.provider.contactPerson}
+                onSelect={(value) => updateProviderInfo({ contactPerson: String(value) })}
+              />
+            </div>
             <Input
               id="providerContactPerson"
               value={currentQuotation.provider.contactPerson}
@@ -269,7 +347,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerPhone">電話</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerPhone">電話</Label>
+              <ConfigValueSelector
+                configKey="provider.phone"
+                configValue={config?.provider?.phone}
+                currentValue={currentQuotation.provider.phone}
+                onSelect={(value) => updateProviderInfo({ phone: String(value) })}
+              />
+            </div>
             <Input
               id="providerPhone"
               value={currentQuotation.provider.phone}
@@ -280,7 +366,15 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerEmail">Email</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerEmail">Email</Label>
+              <ConfigValueSelector
+                configKey="provider.email"
+                configValue={config?.provider?.email}
+                currentValue={currentQuotation.provider.email}
+                onSelect={(value) => updateProviderInfo({ email: String(value) })}
+              />
+            </div>
             <Input
               id="providerEmail"
               type="email"
@@ -292,12 +386,39 @@ export function InfoSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerAddress">地址</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerAddress">地址</Label>
+              <ConfigValueSelector
+                configKey="provider.address"
+                configValue={config?.provider?.address}
+                currentValue={currentQuotation.provider.address}
+                onSelect={(value) => updateProviderInfo({ address: String(value) })}
+              />
+            </div>
             <Input
               id="providerAddress"
               value={currentQuotation.provider.address}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateProviderInfo({ address: e.target.value })}
               placeholder="公司地址"
+              className="export-hide-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="providerTaxId">統一編號</Label>
+              <ConfigValueSelector
+                configKey="provider.taxId"
+                configValue={config?.provider?.taxId}
+                currentValue={currentQuotation.provider.taxId || ''}
+                onSelect={(value) => updateProviderInfo({ taxId: String(value) })}
+              />
+            </div>
+            <Input
+              id="providerTaxId"
+              value={currentQuotation.provider.taxId || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateProviderInfo({ taxId: e.target.value })}
+              placeholder="統一編號"
               className="export-hide-border"
             />
           </div>

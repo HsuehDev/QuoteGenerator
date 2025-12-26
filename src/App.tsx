@@ -1,12 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { useQuotationStore } from '@/stores/quotationStore';
+import { useConfigStore } from '@/stores/configStore';
 import { QuotationDisplay } from '@/components/QuotationDisplay';
 import { ExportButtons } from '@/components/ExportButtons';
 import { HistoryDrawer } from '@/components/HistoryDrawer';
+import { ConfigManager } from '@/components/ConfigManager';
 
 function App() {
   const { currentQuotation, createQuotation } = useQuotationStore();
+  const { loadConfig } = useConfigStore();
   const exportRef = useRef<HTMLDivElement | null>(null);
+
+  // 載入設定檔
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   // 如果沒有當前報價單，建立一個新的
   useEffect(() => {
@@ -31,7 +39,10 @@ function App() {
         {/* 頂部工具列 */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">報價單產生器</h1>
-          <HistoryDrawer />
+          <div className="flex items-center gap-2">
+            <ConfigManager />
+            <HistoryDrawer />
+          </div>
         </div>
 
         {/* 匯出按鈕（固定在頂部） */}

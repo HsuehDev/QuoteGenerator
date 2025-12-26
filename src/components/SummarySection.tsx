@@ -1,4 +1,5 @@
 import { useQuotationStore } from '@/stores/quotationStore';
+import { useConfigStore } from '@/stores/configStore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,9 +19,11 @@ import {
 } from '@/utils/calculations';
 import { useMemo } from 'react';
 import type { TaxCalculationMode } from '@/types/quotation';
+import { ConfigValueSelector } from '@/components/ConfigValueSelector';
 
 export function SummarySection() {
   const { currentQuotation, updateTaxConfig, updateNotes } = useQuotationStore();
+  const { config } = useConfigStore();
 
   const calculations = useMemo(() => {
     if (!currentQuotation) {
@@ -33,7 +36,7 @@ export function SummarySection() {
     const total = calculateTotal(subtotal, currentQuotation.taxConfig);
 
     return { subtotal, subtotalAfterTax, tax, total };
-  }, [currentQuotation?.items, currentQuotation?.taxConfig]);
+  }, [currentQuotation]);
 
   if (!currentQuotation) return null;
 
@@ -51,7 +54,15 @@ export function SummarySection() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="taxName">稅目名稱</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="taxName">稅目名稱</Label>
+                <ConfigValueSelector
+                  configKey="taxConfig.name"
+                  configValue={config?.taxConfig?.name}
+                  currentValue={currentQuotation.taxConfig.name}
+                  onSelect={(value) => updateTaxConfig({ name: String(value) })}
+                />
+              </div>
               <Input
                 id="taxName"
                 value={currentQuotation.taxConfig.name}
@@ -63,7 +74,17 @@ export function SummarySection() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="taxRate">稅率 (%)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="taxRate">稅率 (%)</Label>
+                {config?.taxConfig?.rate !== undefined && (
+                  <ConfigValueSelector
+                    configKey="taxConfig.rate"
+                    configValue={config.taxConfig.rate}
+                    currentValue={currentQuotation.taxConfig.rate}
+                    onSelect={(value) => updateTaxConfig({ rate: Number(value) })}
+                  />
+                )}
+              </div>
               <Input
                 id="taxRate"
                 type="number"
@@ -79,7 +100,17 @@ export function SummarySection() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="taxMode">計算方式</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="taxMode">計算方式</Label>
+                {config?.taxConfig?.mode !== undefined && (
+                  <ConfigValueSelector
+                    configKey="taxConfig.mode"
+                    configValue={config.taxConfig.mode}
+                    currentValue={currentQuotation.taxConfig.mode || 'excluded'}
+                    onSelect={(value) => updateTaxConfig({ mode: value as TaxCalculationMode })}
+                  />
+                )}
+              </div>
               <Select
                 value={currentQuotation.taxConfig.mode || 'excluded'}
                 onValueChange={handleTaxModeChange}
@@ -193,7 +224,15 @@ export function SummarySection() {
       {/* 備註區塊 */}
       <Card>
         <CardHeader>
-          <CardTitle>備註</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>備註</CardTitle>
+            <ConfigValueSelector
+              configKey="notes"
+              configValue={config?.notes}
+              currentValue={currentQuotation.notes}
+              onSelect={(value) => updateNotes(String(value))}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Textarea

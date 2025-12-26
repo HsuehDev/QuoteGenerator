@@ -1,4 +1,5 @@
 import { useQuotationStore } from '@/stores/quotationStore';
+import { useConfigStore } from '@/stores/configStore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -7,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { ConfigValueSelector } from '@/components/ConfigValueSelector';
 
 export function HeaderSection() {
   const { currentQuotation, updateQuotation } = useQuotationStore();
+  const { config } = useConfigStore();
 
   if (!currentQuotation) return null;
 
@@ -24,7 +27,15 @@ export function HeaderSection() {
     <div className="space-y-4 p-6 bg-white rounded-lg shadow-sm border">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="title">報價單標題</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="title">報價單標題</Label>
+            <ConfigValueSelector
+              configKey="title"
+              configValue={config?.title}
+              currentValue={currentQuotation.title}
+              onSelect={(value) => updateQuotation({ title: String(value) })}
+            />
+          </div>
           <Input
             id="title"
             value={currentQuotation.title}
