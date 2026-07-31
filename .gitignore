@@ -75,3 +75,8 @@ Desktop.ini
 
 # Vite
 .vite
+
+# Playwright
+test-results
+e2e-report
+.playwright-mcp

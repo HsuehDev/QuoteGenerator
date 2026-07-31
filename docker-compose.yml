@@ -7,14 +7,34 @@ services:
       dockerfile: Dockerfile
     container_name: quote-generator
     ports:
-      - "3000:80"
+      - "8080:80"
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+    depends_on:
+      - api
     networks:
       - quote-generator-network
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: quote-generator-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATA_PATH=/data/db.json
+    volumes:
+      - quote-data:/data
+    networks:
+      - quote-generator-network
+
+volumes:
+  quote-data:
+    driver: local
 
 networks:
   quote-generator-network:
     driver: bridge
-
