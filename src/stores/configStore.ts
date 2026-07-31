@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { QuotationConfig } from '@/types/config';
 import { loadConfig, saveConfig, deleteConfig } from '@/utils/configManager';
+import { saveConfigToServer } from '@/utils/persistenceService';
 
 interface ConfigStore {
   config: QuotationConfig | null;
@@ -40,6 +41,7 @@ export const useConfigStore = create<ConfigStore>()(
         set({ config: newConfig });
         // 自動儲存
         saveConfig(newConfig);
+        saveConfigToServer(newConfig);
       },
 
       saveConfig: () => {

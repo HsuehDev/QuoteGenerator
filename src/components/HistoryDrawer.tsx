@@ -13,14 +13,22 @@ import { Button } from '@/components/ui/button';
 import { History, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { HelpButton } from '@/components/HelpButton';
+import { HistoryHelpContent } from '@/components/HelpContent';
+import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export function HistoryDrawer() {
   const { history, loadQuotation, deleteQuotation, createQuotation } = useQuotationStore();
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    quotationId: string;
+  } | null>(null);
 
   return (
     <Drawer>
       <DrawerTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="flex items-center gap-2" data-tour="history-button">
           <History className="h-4 w-4" />
           歷史紀錄
         </Button>
@@ -28,10 +36,19 @@ export function HistoryDrawer() {
       <DrawerContent>
         <div className="mx-auto w-full max-w-2xl">
           <DrawerHeader>
-            <DrawerTitle>報價單歷史紀錄</DrawerTitle>
-            <DrawerDescription>
-              最近 5 筆報價單，點擊載入或刪除
-            </DrawerDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DrawerTitle>報價單歷史紀錄</DrawerTitle>
+                <DrawerDescription>
+                  最近 5 筆報價單，點擊載入或刪除
+                </DrawerDescription>
+              </div>
+              <HelpButton
+                content={<HistoryHelpContent />}
+                side="left"
+                align="start"
+              />
+            </div>
           </DrawerHeader>
           <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
             {history.length === 0 ? (
@@ -73,9 +90,10 @@ export function HistoryDrawer() {
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        if (confirm('確定要刪除此報價單嗎？')) {
-                          deleteQuotation(quotation.id);
-                        }
+                        setConfirmState({
+                          open: true,
+                          quotationId: quotation.id,
+                        });
                       }}
                       className="text-red-500 hover:text-red-700"
                     >
@@ -104,6 +122,21 @@ export function HistoryDrawer() {
           </DrawerFooter>
         </div>
       </DrawerContent>
+      {confirmState && (
+        <ConfirmDialog
+          open={confirmState.open}
+          title="確認刪除"
+          message="確定要刪除此報價單嗎？"
+          variant="destructive"
+          confirmText="刪除"
+          cancelText="取消"
+          onConfirm={() => {
+            deleteQuotation(confirmState.quotationId);
+            setConfirmState(null);
+          }}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
     </Drawer>
   );
 }

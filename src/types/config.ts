@@ -1,4 +1,3 @@
-import type { ClientInfo, ProviderInfo, TaxConfig } from './quotation';
 
 export interface QuotationConfig {
   // 報價單基本資訊（支援多個選項）
@@ -12,6 +11,7 @@ export interface QuotationConfig {
     phone?: string[];
     email?: string[];
     address?: string[];
+    taxId?: string[]; // 統一編號
     logo?: string; // Base64，通常只有一個
   };
   
@@ -40,5 +40,8 @@ export interface QuotationConfig {
   
   // 顯示簽章區（可選）
   showSignatureSection?: boolean;
+  
+  // 頁尾文字（可選，支援多個選項）
+  footerText?: string[];
 }
 

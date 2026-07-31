@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sparkles } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConfigValueSelectorProps {
@@ -14,7 +14,6 @@ interface ConfigValueSelectorProps {
   currentValue: string | number;
   onSelect: (value: string | number) => void;
   className?: string;
-  placeholder?: string;
 }
 
 /**
@@ -26,7 +25,6 @@ export function ConfigValueSelector({
   currentValue,
   onSelect,
   className,
-  placeholder = '從設定檔選擇...',
 }: ConfigValueSelectorProps) {
   // 如果設定檔沒有選項或選項為空，不顯示選擇器
   if (!configValues || configValues.length === 0) {
@@ -37,8 +35,7 @@ export function ConfigValueSelector({
   const currentValueStr = String(currentValue);
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <Sparkles className="h-3 w-3 text-blue-500 flex-shrink-0" />
+    <div className={cn('flex items-center', className)}>
       <Select
         value={currentValueStr}
         onValueChange={(value) => {
@@ -51,8 +48,9 @@ export function ConfigValueSelector({
           }
         }}
       >
-        <SelectTrigger className="h-8 w-[180px] text-xs">
-          <SelectValue placeholder={placeholder} />
+        <SelectTrigger className="h-6 w-6 p-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 [&>span]:hidden [&>svg]:hidden">
+          <SelectValue />
+          <ChevronDown className="h-3 w-3 text-blue-500 flex-shrink-0" />
         </SelectTrigger>
         <SelectContent>
           {configValues.map((value, index) => (

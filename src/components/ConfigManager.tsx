@@ -25,13 +25,20 @@ import { Settings, Download, Upload, Trash2, Check, Plus, X } from 'lucide-react
 import { exportConfig, importConfig } from '@/utils/configManager';
 import type { TaxCalculationMode } from '@/types/quotation';
 import { MultiOptionField } from '@/components/MultiOptionField';
+import { convertImageToBase64 } from '@/utils/imageUtils';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { toast } from '@/components/ToastContainer';
 
 export function ConfigManager() {
   const { config, loadConfig, updateConfig, deleteConfig } = useConfigStore();
   const { currentQuotation, updateQuotation, updateClientInfo, updateProviderInfo, updateTaxConfig, updateNotes } = useQuotationStore();
   const [isOpen, setIsOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState(config || {});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const clientLogoInputRef = useRef<HTMLInputElement>(null);
+  const providerLogoInputRef = useRef<HTMLInputElement>(null);
+  const providerStampInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadConfig();
@@ -53,7 +60,12 @@ export function ConfigManager() {
 
   const handleExport = () => {
     if (config) {
-      exportConfig(config);
+      const success = exportConfig(config);
+      if (success) {
+        toast.success('設定檔已匯出');
+      } else {
+        toast.error('匯出設定檔失敗');
+      }
     }
   };
 
@@ -62,14 +74,70 @@ export function ConfigManager() {
     if (importedConfig) {
       updateConfig(importedConfig);
       setLocalConfig(importedConfig);
+      toast.success('設定檔已匯入');
+    } else {
+      toast.error('匯入設定檔失敗：檔案格式不正確或讀取檔案失敗');
     }
   };
 
   const handleDelete = () => {
-    if (confirm('確定要刪除設定檔嗎？')) {
-      deleteConfig();
-      setLocalConfig({});
-      setIsOpen(false);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    deleteConfig();
+    setLocalConfig({});
+    setIsOpen(false);
+    setShowDeleteConfirm(false);
+    toast.success('設定檔已刪除');
+  };
+
+  const handleImageUpload = async (
+    file: File | null,
+    type: 'clientLogo' | 'providerLogo' | 'providerStamp'
+  ) => {
+    if (!file) return;
+
+    try {
+      const base64 = await convertImageToBase64(file);
+      
+      if (type === 'clientLogo') {
+        setLocalConfig({
+          ...localConfig,
+          client: { ...localConfig.client, logo: base64 }
+        });
+      } else if (type === 'providerLogo') {
+        setLocalConfig({
+          ...localConfig,
+          provider: { ...localConfig.provider, logo: base64 }
+        });
+      } else if (type === 'providerStamp') {
+        setLocalConfig({
+          ...localConfig,
+          provider: { ...localConfig.provider, stamp: base64 }
+        });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '上傳圖片失敗');
+    }
+  };
+
+  const removeImage = (type: 'clientLogo' | 'providerLogo' | 'providerStamp') => {
+    if (type === 'clientLogo') {
+      setLocalConfig({
+        ...localConfig,
+        client: { ...localConfig.client, logo: undefined }
+      });
+    } else if (type === 'providerLogo') {
+      setLocalConfig({
+        ...localConfig,
+        provider: { ...localConfig.provider, logo: undefined }
+      });
+    } else if (type === 'providerStamp') {
+      setLocalConfig({
+        ...localConfig,
+        provider: { ...localConfig.provider, stamp: undefined }
+      });
     }
   };
 
@@ -98,6 +166,9 @@ export function ConfigManager() {
       }
       if (config.client.address && config.client.address.length > 0) {
         clientInfo.address = config.client.address[0];
+      }
+      if (config.client.taxId && config.client.taxId.length > 0) {
+        clientInfo.taxId = config.client.taxId[0];
       }
       if (config.client.logo) {
         clientInfo.logo = config.client.logo;
@@ -154,6 +225,9 @@ export function ConfigManager() {
     if (config.showSignatureSection !== undefined) {
       updateQuotation({ showSignatureSection: config.showSignatureSection });
     }
+    if (config.footerText && config.footerText.length > 0) {
+      updateQuotation({ footerText: config.footerText[0] });
+    }
 
     setIsOpen(false);
   };
@@ -162,7 +236,7 @@ export function ConfigManager() {
     <>
       <Drawer open={isOpen} onOpenChange={handleOpenChange}>
         <DrawerTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" data-tour="config-manager">
             <Settings className="h-4 w-4 mr-2" />
             設定檔管理
           </Button>
@@ -193,6 +267,12 @@ export function ConfigManager() {
                     values={localConfig.subtitle || []}
                     onChange={(values) => setLocalConfig({ ...localConfig, subtitle: values })}
                     placeholder="QUOTATION"
+                  />
+                  <MultiOptionField
+                    label="頁尾文字"
+                    values={localConfig.footerText || []}
+                    onChange={(values) => setLocalConfig({ ...localConfig, footerText: values })}
+                    placeholder="DELVEDRILL TECH | INNOVATION & PRECISION"
                   />
                 </CardContent>
               </Card>
@@ -248,6 +328,57 @@ export function ConfigManager() {
                     })}
                     placeholder="公司地址"
                   />
+                  <MultiOptionField
+                    label="統一編號"
+                    values={localConfig.client?.taxId || []}
+                    onChange={(values) => setLocalConfig({
+                      ...localConfig,
+                      client: { ...localConfig.client, taxId: values }
+                    })}
+                    placeholder="統一編號"
+                  />
+                  {/* 客戶 Logo */}
+                  <div className="space-y-2">
+                    <Label>客戶 Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {localConfig.client?.logo ? (
+                        <div className="relative">
+                          <img
+                            src={localConfig.client.logo}
+                            alt="客戶 Logo"
+                            className="h-20 w-20 object-contain border rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage('clientLogo')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => clientLogoInputRef.current?.click()}
+                          className="flex items-center justify-center h-20 w-20 border-2 border-dashed rounded hover:bg-gray-50"
+                        >
+                          <Upload className="h-6 w-6 text-gray-400" />
+                        </button>
+                      )}
+                      <input
+                        ref={clientLogoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/gif"
+                        className="hidden"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, 'clientLogo');
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -320,6 +451,90 @@ export function ConfigManager() {
                     })}
                     placeholder="統一編號"
                   />
+                  {/* 服務提供方 Logo */}
+                  <div className="space-y-2">
+                    <Label>公司 Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {localConfig.provider?.logo ? (
+                        <div className="relative">
+                          <img
+                            src={localConfig.provider.logo}
+                            alt="公司 Logo"
+                            className="h-20 w-20 object-contain border rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage('providerLogo')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => providerLogoInputRef.current?.click()}
+                          className="flex items-center justify-center h-20 w-20 border-2 border-dashed rounded hover:bg-gray-50"
+                        >
+                          <Upload className="h-6 w-6 text-gray-400" />
+                        </button>
+                      )}
+                      <input
+                        ref={providerLogoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/gif"
+                        className="hidden"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, 'providerLogo');
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* 發票章/公司章 */}
+                  <div className="space-y-2">
+                    <Label>發票章/公司章</Label>
+                    <div className="flex items-center gap-4">
+                      {localConfig.provider?.stamp ? (
+                        <div className="relative">
+                          <img
+                            src={localConfig.provider.stamp}
+                            alt="發票章/公司章"
+                            className="h-20 w-20 object-contain border rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage('providerStamp')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => providerStampInputRef.current?.click()}
+                          className="flex items-center justify-center h-20 w-20 border-2 border-dashed rounded hover:bg-gray-50"
+                        >
+                          <Upload className="h-6 w-6 text-gray-400" />
+                        </button>
+                      )}
+                      <input
+                        ref={providerStampInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/gif"
+                        className="hidden"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, 'providerStamp');
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -495,6 +710,18 @@ export function ConfigManager() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          title="確認刪除"
+          message="確定要刪除設定檔嗎？"
+          variant="destructive"
+          confirmText="刪除"
+          cancelText="取消"
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </>
   );
 }

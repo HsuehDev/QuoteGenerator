@@ -44,6 +44,15 @@
 }
 
 /* 匯出模式樣式 */
+.export-mode {
+  /* 確保匯出時元素位置正確，無偏移 */
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
 .export-mode .export-hide {
   display: none !important;
 }
@@ -69,6 +78,24 @@
 .export-mode button.export-hide,
 .export-mode .export-hide {
   display: none !important;
+}
+
+/* 匯出時才顯示的元素（預設隱藏） */
+.export-only {
+  display: none !important;
+}
+
+.export-mode .export-only {
+  display: block !important;
+}
+
+/* 匯出時的 inline 元素 */
+.export-only-inline {
+  display: none !important;
+}
+
+.export-mode .export-only-inline {
+  display: inline !important;
 }
 
 /* ============================================
