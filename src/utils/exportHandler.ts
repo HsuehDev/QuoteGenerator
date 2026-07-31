@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import ExcelJS from 'exceljs';
 import type { Quotation } from '@/types/quotation';
+import { currencyNumFmt } from './formatCurrency';
 
 async function waitForFontsReady(): Promise<void> {
   // 讓字體載入完成再輸出，避免 font metrics 在輸出時改變導致裁切
@@ -41,7 +42,12 @@ function replaceFormControlsWithText(root: HTMLElement, doc: Document): void {
     // 盡量貼近原本的排版行為
     // 注意：Input 元件預設帶 `flex`，但在匯出時讓文字節點用 inline-block/block 更穩定
     replacement.style.display = isTextarea ? 'block' : 'inline-block';
-    replacement.style.whiteSpace = isTextarea ? 'pre-wrap' : 'pre';
+    // 一律允許換行：單行 input 的長內容（如超長項目名稱）改為折行，
+    // 否則會橫向溢出蓋過相鄰欄位
+    replacement.style.whiteSpace = 'pre-wrap';
+    replacement.style.overflowWrap = 'anywhere';
+    replacement.style.wordBreak = 'break-word';
+    replacement.style.maxWidth = '100%';
     replacement.style.width = cs.width;
     replacement.style.minHeight = cs.height;
     replacement.style.boxSizing = cs.boxSizing;
@@ -68,120 +74,112 @@ function replaceFormControlsWithText(root: HTMLElement, doc: Document): void {
   });
 }
 
-function isCanvasProbablyBlank(canvas: HTMLCanvasElement): boolean {
-  const w = canvas.width;
-  const h = canvas.height;
-  if (w === 0 || h === 0) return true;
+// 報價單紙張的固定寬度（px），對應 QuotationDisplay 的 w-[794px]（A4 @ 96dpi）
+const PAPER_WIDTH_PX = 794;
 
-  // 把畫面縮到小尺寸再取樣，避免讀大張 imageData 造成效能/記憶體問題
-  const sampleW = 64;
-  const sampleH = 64;
-  const sampleCanvas = document.createElement('canvas');
-  sampleCanvas.width = sampleW;
-  sampleCanvas.height = sampleH;
-  const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-  if (!sctx) return true;
-
-  sctx.drawImage(canvas, 0, 0, sampleW, sampleH);
-  const data = sctx.getImageData(0, 0, sampleW, sampleH).data;
-
-  let nonWhite = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3] ?? 0;
-    if (a < 10) continue;
-    const r = data[i] ?? 255;
-    const g = data[i + 1] ?? 255;
-    const b = data[i + 2] ?? 255;
-    // 只要不是接近白底，就視為有內容（文字/線條通常會落在這裡）
-    if (r < 250 || g < 250 || b < 250) nonWhite++;
-  }
-
-  // 64*64=4096 pixels，若幾乎全白，很可能是 foreignObjectRendering 失敗的空白畫面
-  return nonWhite < 8;
-}
-
-async function renderWithHtml2Canvas(
+async function renderElementToCanvas(
   element: HTMLElement,
-  exportId: string,
-  foreignObjectRendering: boolean
+  onCloneMeasure?: (clonedRoot: HTMLElement) => void
 ): Promise<HTMLCanvasElement> {
-  return await html2canvas(element, {
-    scale: 2, // 高解析度
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff',
-    allowTaint: true,
-    windowWidth: element.scrollWidth,
-    windowHeight: element.scrollHeight,
-    letterRendering: true,
-    foreignObjectRendering,
-    onclone: (clonedDoc) => {
-      const clonedRoot = clonedDoc.querySelector<HTMLElement>(
-        `[data-export-id="${exportId}"]`
-      );
-      if (!clonedRoot) return;
-
-      // 把 input/textarea 轉成純文字節點，避免表單控制項在 canvas 渲染時出現 metrics 裁切
-      replaceFormControlsWithText(clonedRoot, clonedDoc);
-
-      // 匯出安全樣式（只作用在本次匯出 DOM）
-      const style = clonedDoc.createElement('style');
-      style.setAttribute('data-export-style', exportId);
-      style.textContent = `
-        [data-export-id="${exportId}"] * {
-          -webkit-font-smoothing: antialiased;
-          text-rendering: geometricPrecision;
-        }
-        [data-export-id="${exportId}"] table td,
-        [data-export-id="${exportId}"] table th {
-          overflow: visible !important;
-        }
-        /* 多預留一點點底部空間，避免任何字體 descender 被裁 */
-        [data-export-id="${exportId}"] td,
-        [data-export-id="${exportId}"] th,
-        [data-export-id="${exportId}"] span,
-        [data-export-id="${exportId}"] p,
-        [data-export-id="${exportId}"] div {
-          padding-bottom: 2px;
-        }
-      `;
-      clonedDoc.head.appendChild(style);
-    },
-  });
-}
-
-async function renderElementToCanvas(element: HTMLElement): Promise<HTMLCanvasElement> {
   await waitForFontsReady();
 
   const exportId = `export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const scale = 2;
+
+  // 添加匯出標記
+  element.classList.add('export-mode');
   element.dataset.exportId = exportId;
 
   try {
-    // 添加匯出模式 class，隱藏編輯 UI
-    element.classList.add('export-mode');
+    // 直接渲染目標元素（不是渲染整個 body 再裁剪）
+    const canvas = await html2canvas(element, {
+      scale,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      allowTaint: true,
+      // 虛擬視窗給足寬度，避免紙張（flex 子元素）在窄視窗中被壓縮，
+      // 造成匯出排版與螢幕不一致
+      windowWidth: Math.max(1280, PAPER_WIDTH_PX),
+      windowHeight: element.scrollHeight,
+      onclone: (clonedDoc) => {
+        const clonedRoot = clonedDoc.querySelector<HTMLElement>(
+          `[data-export-id="${exportId}"]`
+        );
+        if (!clonedRoot) return;
 
-    // 先嘗試 foreignObjectRendering（通常能解決字型裁切），但在部分瀏覽器會渲染成空白
-    const foCanvas = await renderWithHtml2Canvas(element, exportId, true);
-    if (!isCanvasProbablyBlank(foCanvas)) return foCanvas;
+        // 把 input/textarea 轉成純文字節點
+        replaceFormControlsWithText(clonedRoot, clonedDoc);
 
-    // fallback：若 foreignObjectRendering 產生空白，改用一般模式
-    return await renderWithHtml2Canvas(element, exportId, false);
+        // 匯出安全樣式
+        const style = clonedDoc.createElement('style');
+        style.setAttribute('data-export-style', exportId);
+        style.textContent = `
+          [data-export-id="${exportId}"] {
+            width: ${PAPER_WIDTH_PX}px !important;
+            flex-shrink: 0 !important;
+          }
+          [data-export-id="${exportId}"] * {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
+          }
+          [data-export-id="${exportId}"] table {
+            table-layout: fixed !important;
+          }
+          [data-export-id="${exportId}"] table td,
+          [data-export-id="${exportId}"] table th {
+            overflow: visible !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+          }
+          [data-export-id="${exportId}"] td,
+          [data-export-id="${exportId}"] th,
+          [data-export-id="${exportId}"] span,
+          [data-export-id="${exportId}"] p,
+          [data-export-id="${exportId}"] div {
+            padding-bottom: 2px;
+            overflow-wrap: anywhere;
+          }
+        `;
+        clonedDoc.head.appendChild(style);
+
+        // 讓呼叫端在「最終匯出版面」上量測（表單已換成純文字、匯出樣式已套用）
+        if (onCloneMeasure) {
+          onCloneMeasure(clonedRoot);
+        }
+      },
+    });
+
+    return canvas;
   } finally {
+    // 恢復原始狀態
     element.classList.remove('export-mode');
     delete element.dataset.exportId;
   }
 }
 
 /**
- * 匯出為 JPG 圖片
+ * 將元素渲染為圖片 URL
+ */
+export async function renderToImageUrl(element: HTMLElement): Promise<string> {
+  try {
+    const canvas = await renderElementToCanvas(element);
+    // PNG 無損：文字與細線不會出現 JPEG 壓縮痕
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('渲染圖片失敗:', error);
+    throw error;
+  }
+}
+
+/**
+ * 匯出為 PNG 圖片（直接下載）
  */
 export async function exportToImage(element: HTMLElement, filename: string = '報價單'): Promise<void> {
   try {
-    const canvas = await renderElementToCanvas(element);
-    
-    const url = canvas.toDataURL('image/jpeg', 0.95);
+    const url = await renderToImageUrl(element);
     const link = document.createElement('a');
-    link.download = `${filename}.jpg`;
+    link.download = `${filename}.png`;
     link.href = url;
     link.click();
   } catch (error) {
@@ -193,22 +191,139 @@ export async function exportToImage(element: HTMLElement, filename: string = '�
 /**
  * 匯出為 PDF
  */
+const PDF_PAGE_MARGIN_MM = 10;
+// 切點被移到區塊上緣時，額外留白的安全間距（canvas px，scale=2 下約 6 CSS px）
+const PAGE_CUT_PADDING_PX = 12;
+// 一頁至少要填到這個比例才允許提前切頁，否則退回硬切（防止超高區塊造成近乎空白頁）
+const MIN_PAGE_FILL_RATIO = 0.25;
+// 末尾殘片低於此高度（canvas px，約 8mm）就捨棄：那只會是紙張底部的空白邊，
+// 有內容的區塊會被切點邏輯整塊推到下一頁，不會留下這麼小的殘尾
+const MIN_TAIL_HEIGHT_PX = 60;
+
+interface UnbreakableRange {
+  top: number;
+  bottom: number;
+}
+
+/**
+ * 在 html2canvas 的 clone（最終匯出版面）上量測「不可分割區塊」的垂直範圍。
+ * 必須在 clone 上量：匯出時表單控制元件已換成純文字、隱藏元素已移除，
+ * 版面高度與編輯畫面不同。回傳 CSS px（相對紙張頂端）。
+ */
+function collectUnbreakableRanges(clonedRoot: HTMLElement): { ranges: UnbreakableRange[]; totalHeight: number } {
+  const rootRect = clonedRoot.getBoundingClientRect();
+  const nodes = clonedRoot.querySelectorAll<HTMLElement>(
+    '[data-export-block], table thead, table tbody tr'
+  );
+  const ranges: UnbreakableRange[] = [];
+  nodes.forEach((node) => {
+    const rect = node.getBoundingClientRect();
+    if (rect.height <= 0) return;
+    ranges.push({
+      top: rect.top - rootRect.top,
+      bottom: rect.bottom - rootRect.top,
+    });
+  });
+  ranges.sort((a, b) => a.top - b.top);
+  return { ranges, totalHeight: rootRect.height };
+}
+
+/**
+ * 把預定切點往上移到區塊邊界，避免切到半列項目或半行文字。
+ * 若區塊比一頁還高（無法避開），退回原切點硬切。
+ */
+function findSafeCutY(
+  desiredY: number,
+  sliceStartY: number,
+  pageHeightPx: number,
+  ranges: UnbreakableRange[]
+): number {
+  let y = desiredY;
+  // 反覆上移：切點可能落入多個（或連鎖的）區塊
+  for (let i = 0; i < 20; i++) {
+    const straddling = ranges.filter((r) => r.top < y - 1 && r.bottom > y + 1);
+    if (straddling.length === 0) break;
+    y = Math.min(...straddling.map((r) => r.top)) - PAGE_CUT_PADDING_PX;
+  }
+  if (y <= sliceStartY + pageHeightPx * MIN_PAGE_FILL_RATIO) {
+    return desiredY;
+  }
+  return y;
+}
+
 export async function exportToPDF(element: HTMLElement, filename: string = '報價單'): Promise<void> {
   try {
-    const canvas = await renderElementToCanvas(element);
-    
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    // 在渲染 clone 時同步量測區塊位置（clone 即最終匯出版面）
+    let cssRanges: UnbreakableRange[] = [];
+    let cssHeight = 0;
+    const canvas = await renderElementToCanvas(element, (clonedRoot) => {
+      const measured = collectUnbreakableRanges(clonedRoot);
+      cssRanges = measured.ranges;
+      cssHeight = measured.totalHeight;
+    });
+
+    // clone CSS px → canvas px
+    const yScale = cssHeight > 0 ? canvas.height / cssHeight : 1;
+    const ranges: UnbreakableRange[] = cssRanges.map((r) => ({
+      top: r.top * yScale,
+      bottom: r.bottom * yScale,
+    }));
+
     const pdf = new jsPDF('p', 'mm', 'a4');
-    
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-    const imgX = (pdfWidth - imgWidth * ratio) / 2;
-    const imgY = 0;
-    
-    pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - PDF_PAGE_MARGIN_MM * 2;
+    const contentHeight = pageHeight - PDF_PAGE_MARGIN_MM * 2;
+
+    // 內容寬度固定貼齊頁面（扣除邊距），高度超過一頁時逐頁切割 canvas，
+    // 切點對齊區塊邊界，而不是整張縮小塞進單頁
+    const pxPerMm = canvas.width / contentWidth;
+    const pageContentHeightPx = Math.floor(contentHeight * pxPerMm);
+
+    let sourceY = 0;
+    let page = 0;
+    while (sourceY < canvas.height - 1) {
+      if (page > 0 && canvas.height - sourceY < MIN_TAIL_HEIGHT_PX) {
+        break;
+      }
+      const desiredEnd = Math.min(sourceY + pageContentHeightPx, canvas.height);
+      const end =
+        desiredEnd >= canvas.height
+          ? canvas.height
+          : findSafeCutY(desiredEnd, sourceY, pageContentHeightPx, ranges);
+      const sliceHeightPx = Math.round(end - sourceY);
+
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeightPx;
+      const ctx = sliceCanvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('無法建立畫布進行 PDF 分頁');
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(
+        canvas,
+        0, sourceY, canvas.width, sliceHeightPx,
+        0, 0, canvas.width, sliceHeightPx
+      );
+
+      if (page > 0) {
+        pdf.addPage();
+      }
+      pdf.addImage(
+        sliceCanvas.toDataURL('image/jpeg', 0.95),
+        'JPEG',
+        PDF_PAGE_MARGIN_MM,
+        PDF_PAGE_MARGIN_MM,
+        contentWidth,
+        sliceHeightPx / pxPerMm
+      );
+
+      sourceY = end;
+      page++;
+    }
+
     pdf.save(`${filename}.pdf`);
   } catch (error) {
     console.error('匯出 PDF 失敗:', error);
@@ -307,6 +422,9 @@ export async function exportToExcel(quotation: Quotation, filename: string = '�
     rowIndex++;
     worksheet.getCell(rowIndex, 1).value = `地址：${quotation.client.address}`;
     worksheet.getCell(rowIndex, 3).value = `地址：${quotation.provider.address}`;
+    rowIndex++;
+    worksheet.getCell(rowIndex, 1).value = `統一編號：${quotation.client.taxId || ''}`;
+    worksheet.getCell(rowIndex, 3).value = `統一編號：${quotation.provider.taxId || ''}`;
     rowIndex += 2;
     
     // Logo 嵌入（服務提供方）
@@ -351,6 +469,7 @@ export async function exportToExcel(quotation: Quotation, filename: string = '�
     rowIndex++;
     
     // 報價項目內容
+    const amountNumFmt = currencyNumFmt(quotation.showDecimals === true);
     quotation.items.forEach((item) => {
       worksheet.getCell(rowIndex, 1).value = item.name;
       worksheet.getCell(rowIndex, 1).style = cellStyle;
@@ -359,9 +478,9 @@ export async function exportToExcel(quotation: Quotation, filename: string = '�
       worksheet.getCell(rowIndex, 3).value = item.quantity;
       worksheet.getCell(rowIndex, 3).style = { ...cellStyle, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 4).value = item.unitPrice;
-      worksheet.getCell(rowIndex, 4).style = { ...cellStyle, alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 4).style = { ...cellStyle, alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       worksheet.getCell(rowIndex, 5).value = item.subtotal;
-      worksheet.getCell(rowIndex, 5).style = { ...cellStyle, alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { ...cellStyle, alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       rowIndex++;
     });
     
@@ -380,41 +499,41 @@ export async function exportToExcel(quotation: Quotation, filename: string = '�
       worksheet.getCell(rowIndex, 4).value = '含稅總額：';
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = subtotal;
-      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = '未稅金額：';
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = subtotalAfterTax;
-      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = `${quotation.taxConfig.name} (${quotation.taxConfig.rate}%)：`;
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = tax;
-      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
     } else if (taxMode === 'excluded') {
       // 外加模式
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = '未稅金額：';
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = subtotal;
-      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = `${quotation.taxConfig.name} (${quotation.taxConfig.rate}%)：`;
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = tax;
-      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = '含稅總額：';
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = total;
-      worksheet.getCell(rowIndex, 5).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { font: { bold: true }, alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
     } else {
       // 不計算模式
       rowIndex++;
       worksheet.getCell(rowIndex, 4).value = '總額：';
       worksheet.getCell(rowIndex, 4).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
       worksheet.getCell(rowIndex, 5).value = total;
-      worksheet.getCell(rowIndex, 5).style = { font: { bold: true }, alignment: { horizontal: 'right' as const } };
+      worksheet.getCell(rowIndex, 5).style = { font: { bold: true }, alignment: { horizontal: 'right' as const }, numFmt: amountNumFmt };
     }
     
     // 備註

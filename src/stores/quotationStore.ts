@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Quotation, LineItem, ClientInfo, ProviderInfo, TaxConfig } from '@/types/quotation';
+import type { Quotation, LineItem, ClientInfo, ProviderInfo, TaxConfig, TaxCalculationMode } from '@/types/quotation';
 import { format } from 'date-fns';
 import { loadConfig } from '@/utils/configManager';
+import { generateQuotationNumber } from '@/utils/quotationNumber';
+import { saveQuotationsToServer } from '@/utils/persistenceService';
 
 interface QuotationStore {
   currentQuotation: Quotation | null;
@@ -51,7 +53,7 @@ const createDefaultQuotation = (): Quotation => {
     id: `quotation-${Date.now()}`,
     title: (config?.title && config.title.length > 0) ? config.title[0] : '專案報價單',
     subtitle: (config?.subtitle && config.subtitle.length > 0) ? config.subtitle[0] : 'QUOTATION',
-    quotationNumber: '',
+    quotationNumber: generateQuotationNumber(),
     quotationDate: format(new Date(), 'yyyy-MM-dd'),
     validUntil: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
     client: {
@@ -60,6 +62,7 @@ const createDefaultQuotation = (): Quotation => {
       phone: (config?.client?.phone && config.client.phone.length > 0) ? config.client.phone[0] : '',
       email: (config?.client?.email && config.client.email.length > 0) ? config.client.email[0] : '',
       address: (config?.client?.address && config.client.address.length > 0) ? config.client.address[0] : '',
+      taxId: (config?.client?.taxId && config.client.taxId.length > 0) ? config.client.taxId[0] : '',
       logo: config?.client?.logo,
     },
     provider: {
@@ -81,6 +84,7 @@ const createDefaultQuotation = (): Quotation => {
     },
     notes: (config?.notes && config.notes.length > 0) ? config.notes[0] : '',
     showSignatureSection: config?.showSignatureSection !== undefined ? config.showSignatureSection : true, // 預設顯示簽章區
+    footerText: (config?.footerText && config.footerText.length > 0) ? config.footerText[0] : undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -191,13 +195,15 @@ export const useQuotationStore = create<QuotationStore>()(
         const { currentQuotation } = get();
         if (!currentQuotation) return;
         
+        const initialQuantity = 1;
+        const initialUnitPrice = 0;
         const newItem: LineItem = {
           id: `item-${Date.now()}-${Math.random()}`,
           name: '',
           description: '',
-          quantity: 1,
-          unitPrice: 0,
-          subtotal: 0,
+          quantity: initialQuantity,
+          unitPrice: initialUnitPrice,
+          subtotal: initialQuantity * initialUnitPrice,
         };
         
         set({
@@ -299,6 +305,7 @@ export const useQuotationStore = create<QuotationStore>()(
         newHistory = newHistory.slice(0, 5);
         
         set({ history: newHistory });
+        saveQuotationsToServer({ currentQuotation: get().currentQuotation, history: newHistory });
       },
     }),
     {

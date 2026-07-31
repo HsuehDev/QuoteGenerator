@@ -10,4 +10,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      // 對應 docker-compose 的 api 服務（server/index.js, port 3001）
+      // 本機開發時先啟動 API：node server/index.js
+      '/api': 'http://localhost:3001',
+    },
+  },
 })

@@ -13,6 +13,7 @@ export interface ClientInfo {
   phone: string;
   email: string;
   address: string;
+  taxId?: string; // 統一編號
   logo?: string; // Base64
 }
 
@@ -49,6 +50,8 @@ export interface Quotation {
   taxConfig: TaxConfig;
   notes: string;
   showSignatureSection?: boolean; // 是否顯示簽章區
+  showDecimals?: boolean; // 金額是否顯示小數（預設 false：整數四捨五入）
+  footerText?: string; // 頁尾文字
   createdAt: string;
   updatedAt: string;
 }
