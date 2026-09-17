@@ -1,173 +1,155 @@
-# 報價單產生器 Quote Generator
+# Quote Generator
 
-一個專為台灣公司設計的現代化報價單生成與管理工具，支援拖拽排序、多格式匯出與本地持久化儲存。
+English | [繁體中文](./README.zh-TW.md)
 
-**A modern quotation generator and management tool designed for Taiwanese companies. Create, manage, and export professional quotations with drag-and-drop item ordering, multiple export formats (Excel, PDF, Image), and local data persistence.**
+A self-hosted quotation tool for freelancers and small businesses in Taiwan. You fill in the quote directly on an A4-shaped page, the tax is calculated the way Taiwanese invoices expect, and the result exports to PDF, PNG or Excel.
 
----
+![A filled-in quotation in the editor](./docs/screenshots/quotation-main.png)
 
-## 📑 目錄
+*All data in the screenshot is fictional.*
 
-- [✨ 功能特色](#-功能特色)
-- [📸 Demo / Screenshots](#-demo--screenshots)
-- [📖 使用指南](#-使用指南)
-- [❓ 常見問題](#-常見問題)
-- [🚢 部署指南](#-部署指南)
-  - [📦 NPM 部署](#-npm-部署)
-  - [🐳 Docker 部署](#-docker-部署)
-- [🛠️ 技術棧](#️-技術棧)
-- [📄 License](#-license)
-- [📞 聯絡與回饋](#-聯絡與回饋)
+## Why I built this
 
----
+Writing a quotation is a small job that comes back again and again: copy the last spreadsheet, change the client, fix the dates, re-check the tax by hand, export, notice the layout broke, fix it again. None of it is hard, and all of it is easy to get slightly wrong.
 
-## ✨ 功能特色
+I have a habit of turning chores like that into small tools, so I built the thing I wanted: one page that looks like the final document, remembers my usual details, and gets the tax right. I use it myself when I need to send a quote.
 
-- **📋 報價單管理**：建立與編輯報價單，管理客戶與服務提供方資訊，支援多個報價項目，自動計算總金額與稅額（內含/外加/不計算）
-- **🔄 拖拽排序**：使用 `@dnd-kit` 實現流暢的拖拽排序功能
-- **📤 多格式匯出**：支援 Excel、PDF、圖片（JPG）格式匯出
-- **💾 本地持久化**：自動儲存到 localStorage，支援歷史記錄管理（最多 5 筆）
-- **🌙 暗色模式**：支援 Tailwind CSS 暗色模式
+It is deliberately a small tool. The interesting parts are not its size, but the two places where "simple" took some thought: the tax rules, and keeping data safe without making a server a hard requirement.
 
----
+## What it does
 
-## 📸 Demo / Screenshots
+The features follow the order in which a quote actually gets written.
 
-![報價單產生器截圖](./docs/screenshot.png)
+**Fill in**
+- Edit the quotation in place, on a fixed-width A4 layout, so what you see is what gets exported.
+- Client and provider blocks with company name, contact, phone, email, address and tax ID; logo and company stamp upload (capped at 2 MB).
+- Line items with drag-and-drop reordering; subtotals are derived from quantity and unit price.
+- Document numbers are generated per day with a running sequence, and can be overwritten.
 
----
+**Calculate**
+- Three tax modes: tax added on top, tax already included, or no tax.
+- Tax name and rate are editable; amounts display as rounded integers with thousands separators, with a switch for two decimals.
 
-## 📖 使用指南
+**Reuse**
+- A config manager stores several options per field (for example, more than one provider identity or a few standard payment terms) and offers them next to each input. Configs can be exported and imported as JSON.
+- The five most recent quotations are kept in a history drawer and can be reloaded or deleted.
 
-1. **建立報價單**：填寫基本資訊、客戶資訊、服務提供方資訊
-2. **新增報價項目**：填寫品項名稱、描述、數量、單價（系統自動計算小計）
-3. **拖拽排序**：按住項目左側拖拽圖示調整順序
-4. **匯出報價單**：點擊頂部匯出按鈕（JPG / PDF / Excel）
-5. **管理歷史記錄**：點擊右上角歷史記錄圖示查看、載入或刪除
+**Export**
+- PDF with multi-page support, PNG image, and Excel.
+- A first-run guided tour and inline help explain the screen.
 
----
+## Highlight 1: tax logic that matches local practice
 
-## ❓ 常見問題
+In Taiwan, business tax on a quotation or invoice is a whole number of dollars. That sounds trivial until the price is quoted tax-included, because then the untaxed amount has to be derived, and the order of rounding decides whether the three numbers on the page still add up.
 
-**Q: 匯出的 PDF 排版與畫面顯示不一致？**  
-A: html2canvas 可能無法完美還原某些 CSS 樣式（如 `backdrop-filter`），建議調整 `scale` 參數或確認內容已完全載入。
+The rule implemented in [`src/utils/calculations.ts`](./src/utils/calculations.ts):
 
-**Q: 拖拽功能在行動裝置上無法使用？**  
-A: `@dnd-kit` 預設支援觸控操作，請確認瀏覽器版本是否過舊。
+| Mode | Tax | Untaxed amount | Total |
+|---|---|---|---|
+| Added on top | `round(sum × rate)` | `sum` | `sum + tax` |
+| Included | `round(sum × rate / (100 + rate))` | `sum − tax` | `sum` |
+| None | `0` | `sum` | `sum` |
 
-**Q: 清除瀏覽器資料後，報價單歷史記錄消失了？**  
-A: 本專案使用 localStorage 儲存資料，清除瀏覽器資料會導致資料遺失。建議定期匯出重要報價單作為備份。
+For a tax-included price of 10,000 at 5%: tax is `round(476.19) = 476`, so the untaxed amount is 9,524 and the total stays exactly 10,000. Rounding the tax first and deriving the untaxed amount by subtraction guarantees `untaxed + tax = total` for any rate, by construction; rounding the two figures independently gives no such guarantee.
 
-**Q: 如何自訂報價單樣式？**  
-A: 修改 `src/components/QuotationDisplay.tsx` 中的 Tailwind CSS 類別，或調整 `tailwind.config.js` 主題設定。
+Around that core there are a few guard rails: quantity and unit price cannot go negative, the tax rate is clamped to 0–100, and tax IDs accept digits only, up to the 8 characters a Taiwanese tax ID has.
 
-**Q: 可以匯入現有的報價單嗎？**  
-A: 目前僅支援從歷史記錄載入，Excel 匯入功能需要額外實作。
+## Highlight 2: offline-first persistence
 
----
+The tool has to work when there is no server at all, and it should not lose work if a server exists but is unreachable. So the browser is the primary store and the API is an optional second copy.
 
-## 🚢 部署指南
+- Every change is written to `localStorage` through Zustand's persist middleware. This alone is enough to run the app, and it is how `npm run dev` works with no backend.
+- The same change is also sent to the API. If that request fails, the failure is swallowed on purpose: the local copy is already saved, and an error dialog would only interrupt the person writing the quote.
+- On load, the app asks the server for data. If the server has a newer quotation, or has history while the browser has none, the server copy is adopted. This is what lets a second device pick up where the first one left off.
+- The backend is intentionally tiny: an Express app with three endpoints that reads and writes a single JSON file on a Docker volume.
 
-### 📦 NPM 部署
+## Architecture
 
-```bash
-# 建置生產版本
-npm run build
+```mermaid
+flowchart LR
+    subgraph BROWSER["Browser"]
+        UI["React UI"]
+        STORE["Zustand stores"]
+        LS["localStorage"]
+        EXP["Export: html2canvas, jsPDF, ExcelJS"]
+        UI --> STORE
+        STORE -->|"every change"| LS
+        UI --> EXP
+    end
 
-# 預覽生產版本
-npm run preview
+    subgraph COMPOSE["Docker Compose"]
+        NGINX["nginx: static files and /api proxy"]
+        API["Express API"]
+        VOL["JSON file on a volume"]
+        NGINX --> API
+        API --> VOL
+    end
+
+    STORE -.->|"best-effort sync"| NGINX
+    NGINX -.->|"load on startup"| STORE
 ```
 
-建置完成後，將 `dist/` 目錄部署到 Vercel、Netlify、GitHub Pages 等靜態網站託管服務。
+Solid lines are always available. Dotted lines are optional: if they fail, the app keeps working from `localStorage`. Exports run entirely in the browser and never touch the server.
 
-### 🐳 Docker 部署
+## Technical decisions
 
-**使用 Docker Compose（推薦）**：
+**A JSON file instead of a database.**
+The data is one person's quotations and one config object. A file on a volume is easy to back up, easy to inspect, and removes a whole service from the deployment. The cost is that it does not scale past a single user, and it was never meant to.
+
+**The browser is the primary store; the server is a mirror.**
+This keeps the tool usable with no backend and makes server downtime a non-event. The cost is that there are two copies of the truth, and the reconciliation rule on load is simple rather than rigorous.
+
+**Whole-state `PUT`, no merge.**
+Each sync sends the full quotation state and overwrites the file. With one user, last-write-wins is acceptable and keeps both sides small. Two devices editing at the same moment would overwrite each other; I chose not to solve a problem I do not have.
+
+**Round the tax first, derive the rest by subtraction.**
+Covered above. Rounding each figure on its own looks equivalent, but nothing forces the parts to add up to the total, and a one-dollar mismatch is exactly the kind of error a client notices.
+
+**Render the page to a canvas for PDF, and choose page breaks deliberately.**
+html2canvas plus jsPDF reuses the on-screen layout, so there is only one template to maintain. The naive version slices the canvas at fixed heights and cuts table rows in half, so the exporter collects the vertical ranges that must stay intact (rows, table header, marked blocks) and moves each cut up to the nearest safe boundary. The cost is that PDF text is an image, not selectable text; Excel export exists for anyone who needs the numbers.
+
+**No authentication on the API.**
+The intended deployment is a home network or a private VPN. Adding auth would mean accounts, sessions and password handling for a single-user tool. The cost is real and stated plainly: this API must not be exposed to the public internet as it is. See the [deployment note](./docs/DEVELOPMENT.md#security-note).
+
+## How it was built
+
+I built this with AI coding assistants (Cursor, and later Claude Code), and I think the division of labour is worth being specific about.
+
+What I decided: what the tool should and should not do, the tax rules and their rounding order, the offline-first model and its trade-offs, the choice to keep the backend as a single file, and what counts as "done" for each change.
+
+What the AI did: most of the implementation, inside written constraints. Early in the project those constraints lived in a development guide checked into the repository, covering things like typography rules that keep text from being clipped in exports; debugging sessions started from a written plan that compared the broken behaviour against the last working version before any code changed. Both are visible in the git history.
+
+How I kept it honest: a Playwright suite runs against the real app, and I checked exported files by eye, because a PDF that is technically generated and visually broken passes most automated checks. Some of the export fixes in the history exist because that manual check failed.
+
+## Engineering practices
+
+- **End-to-end tests.** A Playwright suite organised into 11 areas: load and hydration, header fields, client and provider info, line items, tax and summary, saving, history, API persistence, config manager, export buttons, and edge cases.
+- **Validation at the input boundary.** Length limits on every field, numeric clamps, digit-only tax IDs, upload size limits, sanitised download filenames, and a guard against double-clicking export.
+- **Typed throughout.** TypeScript with `strict` enabled, plus ESLint.
+- **Reproducible deployment.** A multi-stage Docker build serves the static bundle from nginx; Compose wires it to the API and a named volume.
+- **Readable history.** Conventional commits, and dead code is removed rather than left behind.
+
+There are no unit tests yet. The calculation module is pure and would be the obvious first candidate.
+
+## Status
+
+In personal use. It does what I need, so changes now are mostly fixes to export fidelity and validation. It is a single-user tool by design: no accounts, no conflict resolution, and no authentication on the API.
+
+## Quick start
+
 ```bash
-docker-compose up -d
+npm install
+npm run dev
 ```
 
-**使用 Docker 命令**：
-```bash
-docker build -t quote-generator:latest .
-docker run -d --name quote-generator -p 3000:80 quote-generator:latest
-```
+That is enough to use the app; data stays in the browser. For the API, Docker Compose, and running the tests, see [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md).
 
-應用程式將在 `http://localhost:3000` 啟動。
+**Stack:** React 19, TypeScript, Vite, Zustand, Tailwind CSS with shadcn/ui, dnd-kit, html2canvas, jsPDF, ExcelJS, Express, nginx, Docker Compose, Playwright.
 
----
+## Author
 
-## 🛠️ 技術棧
+Built by [Bighsueh](https://github.com/Bighsueh).
 
-### 前端框架
+## License
 
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| React | 19.2.0 | UI 框架 |
-| TypeScript | 5.9.3 | 類型系統 |
-| Vite | 7.2.4 | 建置工具與開發伺服器 |
-
-### 狀態管理
-
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| Zustand | 5.0.9 | 輕量級狀態管理 |
-| Zustand Persist | - | 本地持久化中間件 |
-
-### UI 組件庫
-
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| shadcn/ui | - | UI 組件系統（基於 Radix UI） |
-| @radix-ui/react-dialog | ^1.1.15 | 對話框組件 |
-| @radix-ui/react-label | ^2.1.8 | 標籤組件 |
-| @radix-ui/react-popover | ^1.1.15 | 彈出層組件 |
-| @radix-ui/react-select | ^2.2.6 | 選擇器組件 |
-| @radix-ui/react-slot | ^1.2.4 | Slot 組件 |
-| Vaul | 1.1.2 | 抽屜組件 |
-
-### 樣式系統
-
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| Tailwind CSS | 3.4.19 | 原子化 CSS 框架 |
-| PostCSS | 8.5.6 | CSS 後處理器 |
-| Autoprefixer | 10.4.23 | CSS 前綴自動補全 |
-| class-variance-authority | ^0.7.1 | 組件變體管理 |
-| clsx | ^2.1.1 | 條件類名工具 |
-| tailwind-merge | ^3.4.0 | Tailwind 類名合併 |
-
-### 功能庫
-
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| @dnd-kit/core | ^6.3.1 | 拖拽核心功能 |
-| @dnd-kit/sortable | ^10.0.0 | 拖拽排序功能 |
-| @dnd-kit/utilities | ^3.2.2 | 拖拽工具函數 |
-| date-fns | 4.1.0 | 日期處理 |
-| react-day-picker | 9.13.0 | 日期選擇器 |
-| lucide-react | 0.562.0 | 圖標庫 |
-| exceljs | 4.4.0 | Excel 檔案生成 |
-| html2canvas | 1.4.1 | HTML 轉圖片 |
-| jspdf | 3.0.4 | PDF 檔案生成 |
-
-### 開發工具
-
-| 技術 | 版本 | 用途 |
-|------|------|------|
-| ESLint | 9.39.1 | 程式碼檢查 |
-| TypeScript ESLint | 8.46.4 | TypeScript 專用 ESLint 規則 |
-| eslint-plugin-react-hooks | ^7.0.1 | React Hooks 規則 |
-| eslint-plugin-react-refresh | ^0.4.24 | React Fast Refresh 規則 |
-
----
-
-## 📄 License
-
-本專案採用 MIT License。
-
----
-
-## 📞 聯絡與回饋
-
-如有問題、建議或發現 Bug，歡迎建立 [GitHub Issue](https://github.com/your-username/quote-generator/issues) 或提交 Pull Request。
+[MIT](./LICENSE)
